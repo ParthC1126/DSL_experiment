@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}Dataset & Training{% endblock %}
+{% block meta_description %}Upload a CSV dataset and train the NetGuard AI Random Forest model for network intrusion detection.{% endblock %}
+{% block page_heading %}Dataset & Training{% endblock %}
+{% block page_subheading %}Upload a labeled CSV dataset and train the Random Forest classifier{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+  <!-- ── Upload & Config Panel ─────────────────────────────────────── -->
+  <div>
+    <!-- Upload Zone -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <span class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload Dataset
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="csv-file-input" accept=".csv" onchange="handleFileSelect(event)">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="upload-title">Drop your CSV file here</div>
+          <div class="upload-sub">or click to browse · Max 100 MB · CSV only</div>
+        </div>
+        <div id="file-selected-info" class="alert-banner info mt-4 hidden"></div>
+        <div id="upload-error" class="alert-banner error mt-4 hidden"></div>
+        <div id="upload-progress" class="mt-4 hidden">
+          <div class="flex justify-between mb-2">
+            <span style="font-size:13px;color:var(--text-muted)">Uploading…</span>
+            <span id="upload-pct" style="font-size:13px;color:var(--accent-cyan)">0%</span>
+          </div>
+          <div class="progress-bar-track"><div class="progress-bar-fill" id="upload-bar" style="width:0%"></div></div>
+        </div>
+        <button class="btn btn-outline w-full mt-4" id="upload-btn" onclick="uploadFile()" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/></svg>
+          Upload File
+        </button>
+      </div>
+    </div>
+
+    <!-- Training Config -->
+    <div class="card" id="train-config-card" style="opacity:0.4;pointer-events:none">
+      <div class="card-header">
+        <span class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          Training Configuration
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="form-group mb-4">
+          <label class="form-label" for="target-column">Target Column <span style="color:var(--severity-critical)">*</span></label>
+          <select id="target-column" class="form-control">
+            <option value="">— select target column —</option>
+          </select>
+          <div class="form-hint">The column containing attack/class labels</div>
+        </div>
+
+        <div class="form-group mb-4">
+          <label class="form-label">Feature Columns</label>
+          <div class="form-hint mb-2">Leave all unchecked to use all columns (excluding target)</div>
+          <div id="feature-cols-container" style="max-height:180px;overflow-y:auto;background:var(--bg-glass);border:1px solid var(--border-secondary);border-radius:var(--radius-md);padding:8px"></div>
+        </div>
+
+        <div class="grid-2 mb-4">
+          <div class="form-group">
+            <label class="form-label" for="n-estimators">Estimators</label>
+            <input type="number" id="n-estimators" class="form-control" value="100" min="10" max="500">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="max-depth">Max Depth</label>
+            <input type="number" id="max-depth" class="form-control" placeholder="None (unlimited)" min="1" max="100">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="test-size">Test Split</label>
+            <input type="number" id="test-size" class="form-control" value="0.2" step="0.05" min="0.1" max="0.4">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="random-state">Random Seed</label>
+            <input type="number" id="random-state" class="form-control" value="42" min="0">
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-full" id="train-btn" onclick="startTraining()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Train Model
+        </button>
+        <div id="train-error" class="alert-banner error mt-4 hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right Panel ────────────────────────────────────────────────── -->
+  <div>
+    <!-- Dataset Inspection -->
+    <div class="card mb-4" id="inspection-card" style="display:none">
+      <div class="card-header">
+        <span class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Dataset Inspection
+        </span>
+        <span id="inspection-summary" style="font-size:12px;color:var(--text-muted)"></span>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border-secondary)">
+          <div style="display:flex;gap:24px;flex-wrap:wrap">
+            <div><span style="font-size:22px;font-weight:700;color:var(--accent-cyan)" id="insp-rows">—</span><div style="font-size:11px;color:var(--text-muted)">Rows</div></div>
+            <div><span style="font-size:22px;font-weight:700;color:var(--accent-cyan)" id="insp-cols">—</span><div style="font-size:11px;color:var(--text-muted)">Columns</div></div>
+            <div><span style="font-size:22px;font-weight:700;color:var(--accent-green)" id="insp-size">—</span><div style="font-size:11px;color:var(--text-muted)">File Size</div></div>
+          </div>
+        </div>
+        <div style="max-height:300px;overflow-y:auto">
+          <table class="data-table">
+            <thead><tr><th>Column</th><th>Type</th><th>Missing</th><th>Unique</th><th>Numeric</th></tr></thead>
+            <tbody id="inspection-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Training Progress / Result -->
+    <div class="card" id="training-card" style="display:none">
+      <div class="card-header">
+        <span class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Training Result
+        </span>
+      </div>
+      <div class="card-body">
+        <!-- Training in progress -->
+        <div id="training-progress-state">
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <span>Training model… this may take a minute</span>
+          </div>
+          <div class="progress-bar-track mt-4"><div class="progress-bar-fill" style="width:100%"></div></div>
+        </div>
+
+        <!-- Training result -->
+        <div id="training-result-state" class="hidden">
+          <div class="alert-banner success mb-4" id="training-success-banner"></div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px" id="training-metrics"></div>
+          <div class="mt-4" id="training-classes"></div>
+          <div class="mt-4"><a href="/model" class="btn btn-outline w-full">View Model Details →</a></div>
+        </div>
+
+        <!-- Training error -->
+        <div id="training-error-state" class="hidden">
+          <div class="alert-banner error" id="training-error-banner"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Placeholder if nothing uploaded yet -->
+    <div class="card" id="upload-placeholder">
+      <div class="card-body">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          <h3>Upload a Dataset</h3>
+          <p>Upload a labeled CSV dataset with network traffic features and an attack/class label column to train the model.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedFile = null;
+let uploadedFilePath = null;
+let inspectionData = null;
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!file.name.endsWith('.csv')) {
+    document.getElementById('upload-error').textContent = 'Only CSV files are supported.';
+    document.getElementById('upload-error').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('upload-error').classList.add('hidden');
+  selectedFile = file;
+  const info = document.getElementById('file-selected-info');
+  info.textContent = `📄 ${file.name} (${(file.size/1024/1024).toFixed(2)} MB) selected`;
+  info.classList.remove('hidden');
+  document.getElementById('upload-btn').disabled = false;
+}
+
+async function uploadFile() {
+  if (!selectedFile) return;
+
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  document.getElementById('upload-progress').classList.remove('hidden');
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round(e.loaded / e.total * 100);
+        document.getElementById('upload-bar').style.width = `${pct}%`;
+        document.getElementById('upload-pct').textContent = `${pct}%`;
+      }
+    });
+
+    const result = await new Promise((resolve, reject) => {
+      xhr.onload = () => resolve(JSON.parse(xhr.responseText));
+      xhr.onerror = () => reject(new Error('Upload failed'));
+      xhr.open('POST', '/api/dataset/upload');
+      xhr.send(formData);
+    });
+
+    document.getElementById('upload-progress').classList.add('hidden');
+
+    if (!result.success) {
+      document.getElementById('upload-error').textContent = result.error?.message || 'Upload failed.';
+      document.getElementById('upload-error').classList.remove('hidden');
+      btn.disabled = false;
+      return;
+    }
+
+    uploadedFilePath = result.data.file_path;
+    inspectionData = result.data.inspection;
+
+    // Show inspection
+    showInspection(inspectionData);
+    enableTrainingConfig(inspectionData);
+    document.getElementById('upload-placeholder').style.display = 'none';
+    document.getElementById('file-selected-info').textContent = `✓ ${result.data.original_name} uploaded successfully`;
+    NetGuard.showToast('Dataset uploaded and inspected', 'success');
+
+  } catch (err) {
+    document.getElementById('upload-error').textContent = err.message;
+    document.getElementById('upload-error').classList.remove('hidden');
+    btn.disabled = false;
+  }
+}
+
+function showInspection(insp) {
+  document.getElementById('inspection-card').style.display = 'block';
+  document.getElementById('insp-rows').textContent = NetGuard.formatNum(insp.n_rows);
+  document.getElementById('insp-cols').textContent = insp.n_columns;
+  const mb = (insp.file_size_bytes / 1024 / 1024).toFixed(2);
+  document.getElementById('insp-size').textContent = `${mb} MB`;
+
+  document.getElementById('inspection-tbody').innerHTML = insp.columns.map(c => `
+    <tr>
+      <td class="mono" style="color:var(--text-primary)">${c.name}</td>
+      <td><span style="font-family:var(--font-mono);font-size:11px;color:var(--accent-cyan)">${c.dtype}</span></td>
+      <td>${c.n_missing > 0 ? `<span class="text-warning">${c.n_missing}</span>` : '<span class="text-success">0</span>'}</td>
+      <td>${c.n_unique}</td>
+      <td>${c.is_numeric ? '<span class="text-success">✓</span>' : '<span class="text-muted">—</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+function enableTrainingConfig(insp) {
+  const card = document.getElementById('train-config-card');
+  card.style.opacity = '1';
+  card.style.pointerEvents = 'auto';
+
+  // Populate target column dropdown
+  const targetSel = document.getElementById('target-column');
+  targetSel.innerHTML = '<option value="">— select target column —</option>' +
+    insp.columns.map(c => `<option value="${c.name}">${c.name} (${c.dtype})</option>`).join('');
+
+  // Populate feature column checkboxes
+  const featureCont = document.getElementById('feature-cols-container');
+  featureCont.innerHTML = insp.columns.map(c => `
+    <label style="display:flex;align-items:center;gap:8px;padding:4px 6px;cursor:pointer;font-size:13px;color:var(--text-secondary)">
+      <input type="checkbox" name="feature_col" value="${c.name}" style="accent-color:var(--accent-cyan)">
+      <span class="mono" style="flex:1">${c.name}</span>
+      <span style="font-size:11px;color:var(--text-muted)">${c.dtype}</span>
+    </label>
+  `).join('');
+}
+
+async function startTraining() {
+  if (!uploadedFilePath) { NetGuard.showToast('Please upload a dataset first', 'error'); return; }
+  const target = document.getElementById('target-column').value;
+  if (!target) { NetGuard.showToast('Please select a target column', 'error'); return; }
+
+  // Gather feature columns (checked only, or empty for all)
+  const checked = Array.from(document.querySelectorAll('input[name="feature_col"]:checked')).map(i => i.value);
+
+  const payload = {
+    file_path: uploadedFilePath,
+    target_column: target,
+    feature_columns: checked,
+    n_estimators: parseInt(document.getElementById('n-estimators').value) || 100,
+    max_depth: parseInt(document.getElementById('max-depth').value) || null,
+    test_size: parseFloat(document.getElementById('test-size').value) || 0.2,
+    random_state: parseInt(document.getElementById('random-state').value) || 42,
+  };
+
+  // Show training progress
+  const trainCard = document.getElementById('training-card');
+  trainCard.style.display = 'block';
+  document.getElementById('training-progress-state').classList.remove('hidden');
+  document.getElementById('training-result-state').classList.add('hidden');
+  document.getElementById('training-error-state').classList.add('hidden');
+  document.getElementById('upload-placeholder').style.display = 'none';
+
+  const btn = document.getElementById('train-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Training…';
+
+  const { ok, data } = await NetGuard.fetch('/api/dataset/train', { method:'POST', body:JSON.stringify(payload) });
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Train Model';
+  document.getElementById('training-progress-state').classList.add('hidden');
+
+  if (!ok) {
+    document.getElementById('training-error-state').classList.remove('hidden');
+    document.getElementById('training-error-banner').textContent = data.error?.message || 'Training failed.';
+    return;
+  }
+
+  const d = data.data;
+  const pct = v => v !== null && v !== undefined ? `${(v*100).toFixed(2)}%` : '—';
+
+  document.getElementById('training-result-state').classList.remove('hidden');
+  document.getElementById('training-success-banner').textContent =
+    `✓ Model ${d.version} trained successfully with ${NetGuard.formatNum(d.n_samples)} samples, ${d.n_features} features.`;
+
+  document.getElementById('training-metrics').innerHTML = [
+    { label:'Accuracy', value:pct(d.accuracy) },
+    { label:'Precision (macro)', value:pct(d.precision_macro) },
+    { label:'Recall (macro)', value:pct(d.recall_macro) },
+    { label:'F1 Score (macro)', value:pct(d.f1_macro) },
+  ].map(m => `
+    <div style="background:var(--bg-glass);border:1px solid var(--border-secondary);border-radius:var(--radius-md);padding:12px;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:var(--accent-cyan)">${m.value}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${m.label}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('training-classes').innerHTML =
+    `<div style="font-size:12px;color:var(--text-muted)">Detected classes: <span style="color:var(--accent-cyan)">${(d.classes||[]).join(', ')}</span></div>`;
+
+  NetGuard.showToast('Model trained and activated!', 'success');
+  loadModelStatus(); // refresh header chip
+}
+
+// Drag-and-drop
+const zone = document.getElementById('upload-zone');
+zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  const files = e.dataTransfer.files;
+  if (files.length) {
+    document.getElementById('csv-file-input').files = files;
+    handleFileSelect({ target: { files } });
+  }
+});
+</script>
+{% endblock %}

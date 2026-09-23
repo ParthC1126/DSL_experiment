@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Activity History{% endblock %}
+{% block meta_description %}Browse and filter all analyzed network activities in NetGuard AI.{% endblock %}
+{% block page_heading %}Activity History{% endblock %}
+{% block page_subheading %}All analyzed network activities and their prediction results{% endblock %}
+
+{% block header_actions %}
+<div class="tabs" id="history-filter-tabs">
+  <span class="tab active" onclick="setFilter(null, this)" data-filter="">All</span>
+  <span class="tab" onclick="setFilter('false', this)" data-filter="false">Normal</span>
+  <span class="tab" onclick="setFilter('true', this)" data-filter="true">Attacks</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Filters Bar -->
+<div class="card mb-4">
+  <div class="card-body" style="padding:16px 20px">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div class="form-group" style="flex:1;min-width:180px">
+        <input type="text" id="search-prediction" class="form-control" placeholder="Filter by prediction type…" oninput="debounceLoad()">
+      </div>
+      <div class="form-group">
+        <select id="per-page-select" class="form-control" onchange="loadHistory(1)" style="width:120px">
+          <option value="20">20 / page</option>
+          <option value="50">50 / page</option>
+          <option value="100">100 / page</option>
+        </select>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="loadHistory(1)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Activity Table -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      Network Activities
+    </span>
+    <span style="font-size:12px;color:var(--text-muted)" id="history-count-label">—</span>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div class="loading-state" id="history-loading">
+      <div class="spinner"></div><span>Loading activities…</span>
+    </div>
+    <div class="table-wrapper hidden" id="history-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Timestamp</th>
+            <th>Prediction</th>
+            <th>Confidence</th>
+            <th>Risk Score</th>
+            <th>Protocol</th>
+            <th>Src IP</th>
+            <th>Dst IP</th>
+            <th>Model</th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty-state hidden" id="history-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      <h3>No activity records</h3>
+      <p>Use the <a href="/analyzer" style="color:var(--accent-cyan)">Activity Analyzer</a> to log network activity.</p>
+    </div>
+  </div>
+  <div class="card-footer">
+    <div id="pagination-container" class="pagination"></div>
+    <span style="font-size:12px;color:var(--text-muted)" id="page-info-label"></span>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+let currentFilter = null;
+let debounceTimer;
+
+function setFilter(val, el) {
+  document.querySelectorAll('#history-filter-tabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentFilter = val;
+  loadHistory(1);
+}
+
+function debounceLoad() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => loadHistory(1), 400);
+}
+
+async function loadHistory(page = 1) {
+  currentPage = page;
+  document.getElementById('history-loading').classList.remove('hidden');
+  document.getElementById('history-table-wrap').classList.add('hidden');
+  document.getElementById('history-empty').classList.add('hidden');
+
+  const perPage = document.getElementById('per-page-select').value;
+  const search  = document.getElementById('search-prediction').value.trim();
+
+  let url = `/api/activities?page=${page}&per_page=${perPage}`;
+  if (currentFilter !== null) url += `&is_attack=${currentFilter}`;
+  if (search) url += `&prediction=${encodeURIComponent(search)}`;
+
+  const { ok, data } = await NetGuard.fetch(url);
+  document.getElementById('history-loading').classList.add('hidden');
+
+  if (!ok) { NetGuard.showToast('Failed to load history', 'error'); return; }
+
+  const { activities, pagination } = data.data;
+
+  document.getElementById('history-count-label').textContent =
+    `${NetGuard.formatNum(pagination.total)} total records`;
+
+  if (activities.length === 0) {
+    document.getElementById('history-empty').classList.remove('hidden');
+    return;
+  }
+
+  // Render table
+  document.getElementById('history-table-wrap').classList.remove('hidden');
+  document.getElementById('history-tbody').innerHTML = activities.map(a => {
+    const risk = a.risk_score ?? 0;
+    const rc = NetGuard.riskClass(risk);
+    return `<tr>
+      <td class="mono text-muted">#${a.id}</td>
+      <td class="mono" style="font-size:12px">${NetGuard.formatDate(a.timestamp)}</td>
+      <td><span class="badge ${a.is_attack ? 'badge-attack' : 'badge-normal'}">${a.prediction || '—'}</span></td>
+      <td>${a.confidence !== null ? NetGuard.formatPct(a.confidence * 100) : '<span class="text-muted">—</span>'}</td>
+      <td><span class="badge badge-${rc}">${risk.toFixed(1)}</span></td>
+      <td class="mono">${a.protocol || '—'}</td>
+      <td class="mono" style="font-size:12px">${a.src_ip || '—'}</td>
+      <td class="mono" style="font-size:12px">${a.dst_ip || '—'}</td>
+      <td class="mono text-muted" style="font-size:11px">${a.model_version ? a.model_version.slice(-8) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Pagination
+  renderPagination(pagination);
+  document.getElementById('page-info-label').textContent =
+    `Page ${pagination.page} of ${pagination.pages}`;
+}
+
+function renderPagination(p) {
+  const cont = document.getElementById('pagination-container');
+  if (p.pages <= 1) { cont.innerHTML = ''; return; }
+
+  let html = `<button class="page-btn" onclick="loadHistory(${p.page-1})" ${!p.has_prev ? 'disabled' : ''}>‹</button>`;
+
+  const start = Math.max(1, p.page - 2);
+  const end   = Math.min(p.pages, p.page + 2);
+  for (let i = start; i <= end; i++) {
+    html += `<button class="page-btn ${i === p.page ? 'active' : ''}" onclick="loadHistory(${i})">${i}</button>`;
+  }
+
+  html += `<button class="page-btn" onclick="loadHistory(${p.page+1})" ${!p.has_next ? 'disabled' : ''}>›</button>`;
+  cont.innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', () => loadHistory(1));
+</script>
+{% endblock %}

@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Model Info{% endblock %}
+{% block meta_description %}View active NetGuard AI model performance metrics, feature importances, and version history.{% endblock %}
+{% block page_heading %}ML Model Information{% endblock %}
+{% block page_subheading %}Active model performance, features, and version history{% endblock %}
+
+{% block content %}
+
+<!-- No Model State -->
+<div class="empty-state hidden" id="no-model-state" style="margin-top:40px">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>
+  <h3>No Active Model</h3>
+  <p>There is no active model to display. <a href="/dataset" style="color:var(--accent-cyan)">Train a new model</a> from the Dataset tab.</p>
+</div>
+
+<div id="model-content" class="hidden">
+  <div class="grid-2 mb-6" style="align-items:start">
+    
+    <!-- ── Left Column: Active Model Details ────────────────────────────── -->
+    <div class="flex-col gap-6">
+      
+      <!-- Metrics Card -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Active Model Performance
+          </span>
+          <span class="badge badge-normal">ACTIVE</span>
+        </div>
+        <div class="card-body">
+          <div class="flex justify-between items-center mb-6">
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Version</div>
+              <div class="mono" style="font-size:15px;color:var(--text-primary)" id="active-version">—</div>
+            </div>
+            <div class="text-right">
+              <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Algorithm</div>
+              <div style="font-size:15px;color:var(--text-primary)">Random Forest</div>
+            </div>
+          </div>
+          
+          <div class="grid-2 gap-4 mb-6">
+            <div style="background:var(--bg-glass);border:1px solid var(--border-secondary);border-radius:var(--radius-md);padding:16px;text-align:center">
+              <div style="font-size:28px;font-weight:800;color:var(--accent-cyan)" id="metric-acc">—</div>
+              <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-top:4px">Accuracy</div>
+            </div>
+            <div style="background:var(--bg-glass);border:1px solid var(--border-secondary);border-radius:var(--radius-md);padding:16px;text-align:center">
+              <div style="font-size:28px;font-weight:800;color:var(--accent-purple)" id="metric-f1">—</div>
+              <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-top:4px">F1 Score (Macro)</div>
+            </div>
+            <div style="background:var(--bg-glass);border:1px solid var(--border-secondary);border-radius:var(--radius-md);padding:16px;text-align:center">
+              <div style="font-size:28px;font-weight:800;color:var(--accent-green)" id="metric-prec">—</div>
+              <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-top:4px">Precision (Macro)</div>
+            </div>
+            <div style="background:var(--bg-glass);border:1px solid var(--border-secondary);border-radius:var(--radius-md);padding:16px;text-align:center">
+              <div style="font-size:28px;font-weight:800;color:var(--accent-yellow)" id="metric-rec">—</div>
+              <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-top:4px">Recall (Macro)</div>
+            </div>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div class="grid-3 text-center">
+            <div>
+              <div style="font-size:18px;font-weight:700;color:var(--text-primary)" id="meta-samples">—</div>
+              <div style="font-size:11px;color:var(--text-muted)">Training Samples</div>
+            </div>
+            <div>
+              <div style="font-size:18px;font-weight:700;color:var(--text-primary)" id="meta-features">—</div>
+              <div style="font-size:11px;color:var(--text-muted)">Features Used</div>
+            </div>
+            <div>
+              <div style="font-size:18px;font-weight:700;color:var(--text-primary)" id="meta-classes">—</div>
+              <div style="font-size:11px;color:var(--text-muted)">Classes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Importances -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Top Feature Importances
+          </span>
+        </div>
+        <div class="card-body">
+          <div id="feature-importance-list">
+            <div class="loading-state" style="padding:20px"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right Column: Configuration & Versions ────────────────────────── -->
+    <div class="flex-col gap-6">
+      
+      <!-- Training Configuration -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Hyperparameters
+          </span>
+        </div>
+        <div class="card-body">
+          <table class="data-table" style="font-size:12px">
+            <tbody id="hyperparameters-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Version History -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Version History
+          </span>
+        </div>
+        <div class="card-body" style="padding:0;max-height:400px;overflow-y:auto">
+          <div class="loading-state" id="versions-loading" style="padding:20px"><div class="spinner"></div></div>
+          <table class="data-table hidden" id="versions-table">
+            <thead>
+              <tr><th>Version / Dataset</th><th>Date</th><th>Accuracy</th><th>Action</th></tr>
+            </thead>
+            <tbody id="versions-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadModelInfo() {
+  document.getElementById('no-model-state').classList.add('hidden');
+  document.getElementById('model-content').classList.add('hidden');
+
+  const { ok, data } = await NetGuard.fetch('/api/model/performance');
+  if (!ok || !data.data) {
+    document.getElementById('no-model-state').classList.remove('hidden');
+    return;
+  }
+  
+  document.getElementById('model-content').classList.remove('hidden');
+  const m = data.data;
+  const pct = v => v !== null && v !== undefined ? NetGuard.formatPct(v*100) : '—';
+  
+  // Metrics
+  document.getElementById('active-version').textContent = m.version;
+  document.getElementById('metric-acc').textContent  = pct(m.accuracy);
+  document.getElementById('metric-f1').textContent   = pct(m.f1_macro);
+  document.getElementById('metric-prec').textContent = pct(m.precision_macro);
+  document.getElementById('metric-rec').textContent  = pct(m.recall_macro);
+  
+  document.getElementById('meta-samples').textContent = NetGuard.formatNum(m.n_samples);
+  document.getElementById('meta-features').textContent = NetGuard.formatNum(m.n_features);
+  document.getElementById('meta-classes').textContent = (m.classes || []).length;
+  
+  // Hyperparameters
+  const params = [
+    { k: 'n_estimators', v: m.n_estimators },
+    { k: 'max_depth', v: m.max_depth || 'None' },
+    { k: 'test_size', v: m.test_size },
+  ];
+  document.getElementById('hyperparameters-tbody').innerHTML = params.map(p => `
+    <tr>
+      <td style="color:var(--text-secondary)">${p.k}</td>
+      <td class="mono" style="color:var(--text-primary);text-align:right">${p.v}</td>
+    </tr>
+  `).join('');
+  
+  // Feature Importances
+  const fiBody = document.getElementById('feature-importance-list');
+  if (m.feature_importances && m.feature_importances.length > 0) {
+    const maxImp = Math.max(...m.feature_importances.map(f => f.importance));
+    fiBody.innerHTML = m.feature_importances.map(f => `
+      <div style="margin-bottom:12px">
+        <div class="flex justify-between" style="margin-bottom:4px;font-size:12px">
+          <span class="mono">${f.feature}</span>
+          <span style="color:var(--text-muted)">${NetGuard.formatPct(f.importance*100)}</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" style="width:${(f.importance/maxImp)*100}%;background:var(--accent-cyan)"></div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    fiBody.innerHTML = '<div class="text-muted" style="font-size:13px;padding:20px;text-align:center">No feature importances available.</div>';
+  }
+  
+  loadVersions(m.version);
+}
+
+async function loadVersions(activeVersion) {
+  const { ok, data } = await NetGuard.fetch('/api/model/versions');
+  document.getElementById('versions-loading').classList.add('hidden');
+  
+  if (!ok || !data.data) return;
+  
+  document.getElementById('versions-table').classList.remove('hidden');
+  document.getElementById('versions-tbody').innerHTML = data.data.map(v => `
+    <tr style="${v.version === activeVersion ? 'background:var(--bg-glass)' : ''}">
+      <td>
+        <div class="mono" style="font-size:11px;color:var(--text-primary)">${v.version.slice(-8)}</div>
+        <div class="truncate" style="font-size:11px;color:var(--text-muted);max-width:120px" title="${v.dataset_name||''}">${v.dataset_name||'Unknown'}</div>
+      </td>
+      <td class="mono" style="font-size:11px">${NetGuard.timeAgo(v.trained_at)}</td>
+      <td style="font-weight:600;color:var(--accent-green)">${NetGuard.formatPct(v.accuracy*100)}</td>
+      <td>
+        ${v.version === activeVersion 
+          ? `<span class="badge badge-normal">Active</span>` 
+          : `<button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:11px" onclick="activateModel('${v.version}')">Activate</button>`}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function activateModel(version) {
+  if (!confirm(`Are you sure you want to activate model version ${version.slice(-8)}?`)) return;
+  
+  const { ok, data } = await NetGuard.fetch(`/api/model/activate/${version}`, { method: 'PATCH' });
+  if (!ok) { NetGuard.showToast(data.error?.message || 'Activation failed', 'error'); return; }
+  
+  NetGuard.showToast(`Model ${version.slice(-8)} activated`, 'success');
+  loadModelInfo();
+  loadModelStatus(); // refresh header chip
+}
+
+document.addEventListener('DOMContentLoaded', loadModelInfo);
+</script>
+{% endblock %}

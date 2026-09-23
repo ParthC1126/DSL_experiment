@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics{% endblock %}
+{% block meta_description %}NetGuard AI analytics — attack trends, type distributions, risk scores, and model performance charts.{% endblock %}
+{% block page_heading %}Analytics{% endblock %}
+{% block page_subheading %}Comprehensive threat analytics and model performance metrics{% endblock %}
+
+{% block header_actions %}
+<select class="form-control" id="period-select" onchange="loadAnalytics()" style="width:140px">
+  <option value="7">Last 7 days</option>
+  <option value="14">Last 14 days</option>
+  <option value="30" selected>Last 30 days</option>
+  <option value="90">Last 90 days</option>
+</select>
+{% endblock %}
+
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="stats-grid mb-6" id="analytics-stats">
+  <div class="stat-card cyan"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div><div class="stat-value" id="an-total">—</div><div class="stat-label">Total Analyses</div></div>
+  <div class="stat-card red"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div class="stat-value" id="an-attacks">—</div><div class="stat-label">Attacks Detected</div><div class="stat-sub" id="an-rate">—</div></div>
+  <div class="stat-card green"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div><div class="stat-value" id="an-normal">—</div><div class="stat-label">Normal Traffic</div></div>
+  <div class="stat-card purple"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="stat-value" id="an-avg-risk">—</div><div class="stat-label">Avg Risk Score</div></div>
+</div>
+
+<!-- Charts Row 1 -->
+<div class="grid-2 mb-6">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Daily Traffic Trend</span>
+    </div>
+    <div class="card-body"><div class="chart-container" style="height:250px"><canvas id="trend-chart"></canvas></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>Attack Type Distribution</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" style="height:250px"><canvas id="attack-dist-chart"></canvas></div>
+      <div class="empty-state hidden" id="attack-dist-empty" style="height:250px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+        <p>No attack data in this period</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="grid-2 mb-6">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Risk Score Distribution</span>
+    </div>
+    <div class="card-body"><div class="chart-container" style="height:220px"><canvas id="risk-dist-chart"></canvas></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Protocol Breakdown</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" style="height:220px"><canvas id="protocol-chart"></canvas></div>
+      <div class="empty-state hidden" id="protocol-empty" style="height:220px">
+        <p>No protocol data available</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Model Performance Section -->
+<div class="card" id="model-perf-card">
+  <div class="card-header">
+    <span class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>Active Model Performance</span>
+    <a href="/model" class="btn btn-ghost btn-sm">View Details →</a>
+  </div>
+  <div class="card-body" id="model-perf-body">
+    <div class="empty-state" id="model-perf-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/></svg>
+      <h3>No Model Trained</h3>
+      <p><a href="/dataset" style="color:var(--accent-cyan)">Train a model</a> to see performance metrics here.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let charts = {};
+
+async function loadAnalytics() {
+  const days = document.getElementById('period-select').value;
+  const { ok, data } = await NetGuard.fetch(`/api/analytics?days=${days}`);
+  if (!ok) { NetGuard.showToast('Failed to load analytics', 'error'); return; }
+
+  const d = data.data;
+  const s = d.summary;
+
+  // Summary cards
+  document.getElementById('an-total').textContent   = NetGuard.formatNum(s.total_analyses);
+  document.getElementById('an-attacks').textContent = NetGuard.formatNum(s.total_attacks);
+  document.getElementById('an-rate').textContent    = `${NetGuard.formatPct(s.attack_rate)} attack rate`;
+  document.getElementById('an-normal').textContent  = NetGuard.formatNum(s.normal_traffic);
+  document.getElementById('an-avg-risk').textContent = s.avg_risk_score ? `${s.avg_risk_score.toFixed(1)}/100` : '—';
+
+  renderTrendChart(d.daily_trend);
+  renderAttackDistChart(d.attack_type_distribution);
+  renderRiskDistChart(d.risk_distribution);
+  renderProtocolChart(d.protocol_breakdown);
+  renderModelPerf(d.model_performance);
+}
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderTrendChart(trend) {
+  destroyChart('trend');
+  const skip = Math.ceil(trend.length / 14);
+  const labels = trend.map((t,i) => i % skip === 0 ? new Date(t.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '');
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  charts.trend = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: trend.map(t => new Date(t.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})),
+      datasets: [
+        { label:'Normal', data:trend.map(t=>t.normal), backgroundColor:'rgba(0,255,157,0.5)', borderColor:'#00ff9d', borderWidth:1, borderRadius:3 },
+        { label:'Attacks', data:trend.map(t=>t.attacks), backgroundColor:'rgba(255,45,85,0.6)', borderColor:'#ff2d55', borderWidth:1, borderRadius:3 },
+      ],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      scales: {
+        x: { stacked:true, grid:{color:'rgba(255,255,255,0.03)'}, ticks:{color:'#8ba8c4',font:{size:10},maxTicksLimit:10} },
+        y: { stacked:true, grid:{color:'rgba(255,255,255,0.03)'}, ticks:{color:'#8ba8c4',font:{size:11}}, beginAtZero:true },
+      },
+      plugins: { ...NetGuard.chartDefaults.plugins },
+    },
+  });
+}
+
+function renderAttackDistChart(dist) {
+  destroyChart('dist');
+  if (!dist || dist.length === 0) {
+    document.getElementById('attack-dist-empty').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('attack-dist-empty').classList.add('hidden');
+  const colors = ['#ff2d55','#ff6b35','#ffd700','#00d4ff','#7c3aed','#00ff9d','#0066ff','#ff9f43','#a29bfe','#fd79a8'];
+  const ctx = document.getElementById('attack-dist-chart').getContext('2d');
+  charts.dist = new Chart(ctx, {
+    type:'doughnut',
+    data: {
+      labels: dist.map(d=>d.type||'Unknown'),
+      datasets: [{ data:dist.map(d=>d.count), backgroundColor:colors.map(c=>c+'cc'), borderColor:colors, borderWidth:2, hoverOffset:8 }],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins: { ...NetGuard.chartDefaults.plugins, legend:{position:'right',labels:{color:'#8ba8c4',font:{size:11},padding:10}} },
+    },
+  });
+}
+
+function renderRiskDistChart(risk) {
+  destroyChart('riskDist');
+  const ctx = document.getElementById('risk-dist-chart').getContext('2d');
+  charts.riskDist = new Chart(ctx, {
+    type:'bar',
+    data: {
+      labels:Object.keys(risk),
+      datasets:[{
+        data:Object.values(risk),
+        backgroundColor:['rgba(0,255,157,0.6)','rgba(255,215,0,0.6)','rgba(255,107,53,0.6)','rgba(255,45,85,0.6)'],
+        borderColor:['#00ff9d','#ffd700','#ff6b35','#ff2d55'],
+        borderWidth:2, borderRadius:6,
+      }],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ ...NetGuard.chartDefaults.plugins, legend:{display:false} },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8ba8c4',font:{size:11}}},
+        y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8ba8c4',font:{size:11}},beginAtZero:true},
+      },
+    },
+  });
+}
+
+function renderProtocolChart(protocols) {
+  destroyChart('proto');
+  if (!protocols || protocols.length === 0) {
+    document.getElementById('protocol-empty').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('protocol-empty').classList.add('hidden');
+  const ctx = document.getElementById('protocol-chart').getContext('2d');
+  charts.proto = new Chart(ctx, {
+    type:'bar',
+    data: {
+      labels:protocols.map(p=>p.protocol),
+      datasets:[{
+        label:'Connections',
+        data:protocols.map(p=>p.count),
+        backgroundColor:'rgba(0,212,255,0.5)',
+        borderColor:'#00d4ff',
+        borderWidth:2, borderRadius:4,
+      }],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{ ...NetGuard.chartDefaults.plugins, legend:{display:false} },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8ba8c4',font:{size:11}},beginAtZero:true},
+        y:{grid:{display:false},ticks:{color:'#8ba8c4',font:{size:12}}},
+      },
+    },
+  });
+}
+
+function renderModelPerf(m) {
+  const body = document.getElementById('model-perf-body');
+  const empty = document.getElementById('model-perf-empty');
+  if (!m) { empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+
+  const pct = v => v !== null && v !== undefined ? NetGuard.formatPct(v*100) : '—';
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:20px">
+      ${[
+        { label:'Accuracy', value:pct(m.accuracy), color:'var(--accent-cyan)' },
+        { label:'Precision', value:pct(m.precision_macro), color:'var(--accent-green)' },
+        { label:'Recall', value:pct(m.recall_macro), color:'var(--accent-yellow)' },
+        { label:'F1 Score', value:pct(m.f1_macro), color:'var(--accent-purple)' },
+      ].map(item=>`
+        <div style="background:var(--bg-glass);border:1px solid var(--border-secondary);border-radius:var(--radius-md);padding:16px;text-align:center">
+          <div style="font-size:26px;font-weight:800;color:${item.color}">${item.value}</div>
+          <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px">${item.label}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="font-size:12px;color:var(--text-muted)">Classes: ${(m.classes||[]).join(', ')} · Version: ${m.version}</div>
+  `;
+}
+
+document.addEventListener('DOMContentLoaded', loadAnalytics);
+</script>
+{% endblock %}

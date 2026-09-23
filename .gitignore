@@ -1,0 +1,39 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Local environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local configuration and databases
+.env
+*.db
+*.sqlite
+*.sqlite3
+
+# Application runtime data
+logs/*
+models_store/*
+reports/*
+uploads/*
+
+# Preserve runtime directories in a fresh checkout
+!logs/.gitkeep
+!models_store/.gitkeep
+!reports/.gitkeep
+!uploads/.gitkeep
+
+# Nested repository metadata
+CSS Project/netguard_ai/.git/
+CSS Project/netguard_ai/.git.local-backup/
+
+# Tooling and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

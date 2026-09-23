@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block meta_description %}NetGuard AI real-time dashboard — threat statistics, attack trends, and recent activity.{% endblock %}
+{% block page_heading %}Dashboard{% endblock %}
+{% block page_subheading %}Real-time network threat monitoring{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-ghost btn-sm" id="refresh-dashboard" onclick="loadDashboard()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+  Refresh
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- KPI Stats -->
+<div class="stats-grid" id="stats-grid">
+  <div class="stat-card cyan scan-line">
+    <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+    <div class="stat-value count-up" id="stat-total">—</div>
+    <div class="stat-label">Total Analyses</div>
+    <div class="stat-sub" id="stat-total-24h">—</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+    <div class="stat-value count-up" id="stat-attacks">—</div>
+    <div class="stat-label">Attacks Detected</div>
+    <div class="stat-sub" id="stat-attack-rate">—</div>
+  </div>
+  <div class="stat-card yellow">
+    <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+    <div class="stat-value count-up" id="stat-alerts">—</div>
+    <div class="stat-label">Open Alerts</div>
+    <div class="stat-sub" id="stat-total-alerts">—</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+    <div class="stat-value" id="stat-accuracy">—</div>
+    <div class="stat-label">Model Accuracy</div>
+    <div class="stat-sub" id="stat-model-version">—</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    <div class="stat-value" id="stat-avg-risk">—</div>
+    <div class="stat-label">Avg Risk Score</div>
+    <div class="stat-sub">Last 24 hours</div>
+  </div>
+</div>
+
+<!-- No-model warning -->
+<div class="alert-banner warning mb-6 hidden" id="no-model-banner">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <span>No ML model is active. <a href="/dataset" style="color:inherit;text-decoration:underline">Upload a dataset and train a model</a> to start analyzing traffic.</span>
+</div>
+
+<!-- Charts Row -->
+<div class="grid-2 mb-6">
+  <!-- Threat Trend Chart -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Threat Trend (7 Days)
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" style="height:220px">
+        <canvas id="trend-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attack Distribution Chart -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 7.07 17.07"/></svg>
+        Attack Distribution
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" style="height:220px">
+        <canvas id="dist-chart"></canvas>
+      </div>
+      <div class="empty-state hidden" id="dist-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+        <p>No attack data yet</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Activity Table -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      Recent Activity
+    </span>
+    <a href="/history" class="btn btn-ghost btn-sm">View All →</a>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div class="loading-state" id="activity-loading">
+      <div class="spinner"></div>
+      <span>Loading activities…</span>
+    </div>
+    <div class="table-wrapper hidden" id="activity-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Time</th><th>Prediction</th><th>Confidence</th><th>Risk Score</th><th>Protocol</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="activity-tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty-state hidden" id="activity-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      <h3>No activity yet</h3>
+      <p>Use the <a href="/analyzer" style="color:var(--accent-cyan)">Activity Analyzer</a> to run your first analysis.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let trendChart, distChart;
+
+async function loadDashboard() {
+  const { ok, data } = await NetGuard.fetch('/api/dashboard');
+  if (!ok) { NetGuard.showToast('Failed to load dashboard data', 'error'); return; }
+
+  const d = data.data;
+  const s = d.stats;
+
+  // KPI cards
+  document.getElementById('stat-total').textContent     = NetGuard.formatNum(s.total_analyses);
+  document.getElementById('stat-total-24h').textContent = `${NetGuard.formatNum(s.recent_24h_total)} in last 24h`;
+  document.getElementById('stat-attacks').textContent   = NetGuard.formatNum(s.total_attacks);
+  document.getElementById('stat-attack-rate').textContent = `${NetGuard.formatPct(s.attack_rate)} attack rate`;
+  document.getElementById('stat-alerts').textContent    = NetGuard.formatNum(s.open_alerts);
+  document.getElementById('stat-total-alerts').textContent = `${NetGuard.formatNum(s.total_alerts)} total`;
+  document.getElementById('stat-accuracy').textContent  = s.model_accuracy !== null ? NetGuard.formatPct(s.model_accuracy) : '—';
+  document.getElementById('stat-model-version').textContent = s.model_version ? `v: ${s.model_version.slice(-8)}` : 'No model trained';
+  document.getElementById('stat-avg-risk').textContent  = s.avg_risk_score ? `${s.avg_risk_score.toFixed(1)}/100` : '—';
+
+  // No model banner
+  if (!s.model_version) {
+    document.getElementById('no-model-banner').classList.remove('hidden');
+  }
+
+  // Trend chart
+  renderTrendChart(d.threat_trend);
+
+  // Distribution chart
+  if (d.attack_distribution && d.attack_distribution.length > 0) {
+    renderDistChart(d.attack_distribution);
+  } else {
+    document.getElementById('dist-empty').classList.remove('hidden');
+  }
+
+  // Activity table
+  renderActivities(d.recent_activities);
+}
+
+function renderTrendChart(trend) {
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  const labels = trend.map(t => {
+    const d = new Date(t.date);
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  });
+
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Total',
+          data: trend.map(t => t.total),
+          borderColor: 'rgba(0, 212, 255, 0.8)',
+          backgroundColor: 'rgba(0, 212, 255, 0.08)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: '#00d4ff',
+          borderWidth: 2,
+        },
+        {
+          label: 'Attacks',
+          data: trend.map(t => t.attacks),
+          borderColor: 'rgba(255, 45, 85, 0.8)',
+          backgroundColor: 'rgba(255, 45, 85, 0.08)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: '#ff2d55',
+          borderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      ...NetGuard.chartDefaults,
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#8ba8c4', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#8ba8c4', font: { size: 11 } }, beginAtZero: true },
+      },
+      plugins: { ...NetGuard.chartDefaults.plugins },
+      animation: { duration: 800, easing: 'easeInOutQuart' },
+    },
+  });
+}
+
+function renderDistChart(dist) {
+  const ctx = document.getElementById('dist-chart').getContext('2d');
+  const colors = [
+    '#ff2d55','#ff6b35','#ffd700','#00d4ff','#7c3aed',
+    '#00ff9d','#0066ff','#ff9f43','#a29bfe','#fd79a8'
+  ];
+
+  if (distChart) distChart.destroy();
+  distChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: dist.map(d => d.type || 'Unknown'),
+      datasets: [{
+        data: dist.map(d => d.count),
+        backgroundColor: colors.slice(0, dist.length).map(c => c + 'cc'),
+        borderColor: colors.slice(0, dist.length),
+        borderWidth: 2,
+        hoverOffset: 6,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        ...NetGuard.chartDefaults.plugins,
+        legend: { position: 'right', labels: { color: '#8ba8c4', font: { size: 11 }, padding: 10 } },
+      },
+      animation: { duration: 800 },
+    },
+  });
+}
+
+function renderActivities(activities) {
+  const loading = document.getElementById('activity-loading');
+  const wrap    = document.getElementById('activity-table-wrap');
+  const empty   = document.getElementById('activity-empty');
+  const tbody   = document.getElementById('activity-tbody');
+
+  loading.classList.add('hidden');
+
+  if (!activities || activities.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  wrap.classList.remove('hidden');
+  tbody.innerHTML = activities.map(a => {
+    const risk = a.risk_score ?? 0;
+    const rc = NetGuard.riskClass(risk);
+    return `<tr>
+      <td class="mono">${NetGuard.timeAgo(a.timestamp)}</td>
+      <td><span class="badge ${a.is_attack ? 'badge-attack' : 'badge-normal'}">${a.prediction || '—'}</span></td>
+      <td>${a.confidence !== null ? NetGuard.formatPct(a.confidence * 100) : '<span class="text-muted">Unavailable</span>'}</td>
+      <td><span class="badge badge-${rc}">${risk.toFixed(1)}</span></td>
+      <td>${a.protocol || '—'}</td>
+      <td><span class="badge ${a.is_attack ? 'badge-attack' : 'badge-normal'}">${a.is_attack ? 'Attack' : 'Normal'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+{% endblock %}

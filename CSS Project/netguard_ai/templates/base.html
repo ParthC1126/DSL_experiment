@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{% block meta_description %}NetGuard AI — ML-powered network intrusion and anomaly detection platform.{% endblock %}">
+  <title>{% block title %}NetGuard AI{% endblock %} — Network Intrusion Detection</title>
+
+  <!-- Preconnect Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Main CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Logo -->
+    <a class="sidebar-logo" href="/" aria-label="NetGuard AI Home">
+      <div class="logo-icon">
+        <!-- Shield icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-name">NetGuard AI</span>
+        <span class="logo-tagline">Threat Detection</span>
+      </div>
+    </a>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav" aria-label="Main navigation">
+
+      <span class="nav-section-label">Core</span>
+
+      <a class="nav-item {% if request.path == '/' or request.path == '/dashboard' %}active{% endif %}"
+         href="/dashboard" id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        <span>Dashboard</span>
+      </a>
+
+      <a class="nav-item {% if request.path == '/analyzer' %}active{% endif %}"
+         href="/analyzer" id="nav-analyzer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          <path d="M11 8v3m0 0v3m0-3h3m-3 0H8"/>
+        </svg>
+        <span>Activity Analyzer</span>
+      </a>
+
+      <a class="nav-item {% if request.path == '/history' %}active{% endif %}"
+         href="/history" id="nav-history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/>
+          <path d="M12 7v5l4 2"/>
+        </svg>
+        <span>Activity History</span>
+      </a>
+
+      <span class="nav-section-label">Security</span>
+
+      <a class="nav-item {% if request.path == '/alerts' %}active{% endif %}"
+         href="/alerts" id="nav-alerts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span>Alerts</span>
+        <span class="nav-badge" id="alert-count-badge" style="display:none">0</span>
+      </a>
+
+      <a class="nav-item {% if request.path == '/analytics' %}active{% endif %}"
+         href="/analytics" id="nav-analytics">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        <span>Analytics</span>
+      </a>
+
+      <span class="nav-section-label">Machine Learning</span>
+
+      <a class="nav-item {% if request.path == '/dataset' %}active{% endif %}"
+         href="/dataset" id="nav-dataset">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+        </svg>
+        <span>Dataset & Training</span>
+      </a>
+
+      <a class="nav-item {% if request.path == '/model' %}active{% endif %}"
+         href="/model" id="nav-model">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+          <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+          <line x1="6" y1="6" x2="6.01" y2="6"/>
+          <line x1="6" y1="18" x2="6.01" y2="18"/>
+        </svg>
+        <span>Model Info</span>
+      </a>
+
+      <a class="nav-item {% if request.path == '/reports' %}active{% endif %}"
+         href="/reports" id="nav-reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        <span>Reports</span>
+      </a>
+
+    </nav>
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+      <div class="system-status">
+        <span class="status-dot" id="system-status-dot"></span>
+        <span id="system-status-text">System Online</span>
+      </div>
+    </div>
+
+  </aside><!-- /sidebar -->
+
+  <!-- ── Main Content ─────────────────────────────────────────────────── -->
+  <div class="main-content">
+
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="page-title">
+        <h1>{% block page_heading %}Dashboard{% endblock %}</h1>
+        <p>{% block page_subheading %}Real-time network threat monitoring{% endblock %}</p>
+      </div>
+      <div class="header-actions">
+        <!-- Model Status Chip -->
+        <div class="model-status-chip no-model" id="model-status-chip">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+            <circle cx="5" cy="5" r="5"/>
+          </svg>
+          <span id="model-status-text">No Model</span>
+        </div>
+        {% block header_actions %}{% endblock %}
+      </div>
+    </header>
+
+    <!-- Page Body -->
+    <main class="page-body fade-in" id="page-body">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div><!-- /main-content -->
+
+</div><!-- /app-shell -->
+
+<!-- ── Global JS ──────────────────────────────────────────────────────── -->
+<script>
+// ── Global utilities ─────────────────────────────────────────────────────
+const NetGuard = {
+  // Fetch wrapper with error handling
+  async fetch(url, options = {}) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json', ...options.headers },
+        ...options,
+      });
+      const json = await res.json();
+      return { ok: res.ok, status: res.status, data: json };
+    } catch (err) {
+      return { ok: false, status: 0, data: { success: false, error: { message: err.message } } };
+    }
+  },
+
+  // Format number with commas
+  formatNum(n) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString();
+  },
+
+  // Format percentage
+  formatPct(n, decimals = 1) {
+    if (n === null || n === undefined) return '—';
+    return `${Number(n).toFixed(decimals)}%`;
+  },
+
+  // Format risk score badge class
+  riskClass(score) {
+    if (score >= 85) return 'critical';
+    if (score >= 65) return 'high';
+    if (score >= 40) return 'medium';
+    return 'low';
+  },
+
+  // Relative time
+  timeAgo(isoStr) {
+    if (!isoStr) return '—';
+    const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+    if (diff < 60) return `${Math.floor(diff)}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return new Date(isoStr).toLocaleDateString();
+  },
+
+  // Format datetime
+  formatDate(isoStr) {
+    if (!isoStr) return '—';
+    return new Date(isoStr).toLocaleString();
+  },
+
+  // Show toast notification
+  showToast(message, type = 'info') {
+    const existing = document.getElementById('ng-toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'ng-toast';
+    toast.className = `alert-banner ${type}`;
+    toast.style.cssText = 'position:fixed;top:80px;right:24px;z-index:9999;min-width:280px;max-width:420px;';
+    toast.innerHTML = `<span>${message}</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  },
+
+  // Chart.js default config
+  chartDefaults: {
+    color: '#8ba8c4',
+    borderColor: 'rgba(0, 212, 255, 0.15)',
+    plugins: {
+      legend: { labels: { color: '#8ba8c4', font: { family: 'Inter', size: 12 } } },
+      tooltip: {
+        backgroundColor: 'rgba(10, 22, 40, 0.95)',
+        borderColor: 'rgba(0, 212, 255, 0.3)',
+        borderWidth: 1,
+        titleColor: '#e8f4fd',
+        bodyColor: '#8ba8c4',
+        padding: 12,
+      },
+    },
+  },
+};
+
+// ── Load model status for header chip ────────────────────────────────────
+async function loadModelStatus() {
+  const { ok, data } = await NetGuard.fetch('/api/model/info');
+  const chip = document.getElementById('model-status-chip');
+  const txt  = document.getElementById('model-status-text');
+  if (ok && data.data) {
+    chip.classList.remove('no-model');
+    txt.textContent = data.data.version || 'Model Active';
+  } else {
+    chip.classList.add('no-model');
+    txt.textContent = 'No Model';
+  }
+}
+
+// ── Load open alert count for sidebar badge ───────────────────────────────
+async function loadAlertBadge() {
+  const { ok, data } = await NetGuard.fetch('/api/alerts?per_page=1');
+  if (ok && data.data?.counts) {
+    const badge = document.getElementById('alert-count-badge');
+    const open  = data.data.counts.open;
+    if (open > 0) {
+      badge.textContent = open > 99 ? '99+' : open;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  loadModelStatus();
+  loadAlertBadge();
+
+  // Mobile sidebar toggle
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.getElementById('sidebar').classList.remove('open');
+  });
+});
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
